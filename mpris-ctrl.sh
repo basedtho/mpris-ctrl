@@ -120,9 +120,15 @@ function dbus-any-command {
     local function_name=$2
     shift 2
     local parameters="$@"
-    dbus-send --print-reply --session \
-        --dest=org.mpris.MediaPlayer2.${player} \
-        $mp_object ${interface_path}.${function_name} ${parameters}
+    IFS=',' read -ra players <<< "${player}"
+    for p in "${players[@]}"; do
+        dbus-send --print-reply --session \
+            --dest=org.mpris.MediaPlayer2.${p} \
+            $mp_object ${interface_path}.${function_name} ${parameters}
+        if [ $? -eq 0 ]; then
+            break
+        fi
+    done
 }
 
 # For dbus-{root,player,tracklist}-command
@@ -251,13 +257,5 @@ if [ $# -gt 0 ] ; then parse-parameters "$@" ; else
     show-help 1
 fi
 
-
-# Validate the specified player
-if ! is-valid-player "$player" ; then
-    echo "PLAYER '$player' is not a valid MPRIS target."
-    echo "List of valid MPRIS targets: "
-    list-valid-player-targets
-    exit 1
-fi
 
 execute-command "$command" "$leftovers"
